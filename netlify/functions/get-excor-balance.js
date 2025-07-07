@@ -6,7 +6,7 @@ exports.handler = async function (event) {
   }
 
   try {
-    const { excorName } = JSON.parse(event.body);
+    const { RAsName } = JSON.parse(event.body);
 
     const auth = new google.auth.GoogleAuth({
       credentials: {
@@ -26,13 +26,13 @@ exports.handler = async function (event) {
     });
 
     const rows = response.data.values || [];
-    const excorRow = rows.find(row => row[0] === excorName);
+    const RAsRow = rows.find(row => row[0] === RAsName);
 
-    if (!excorRow) {
+    if (!RAsRow) {
       return { statusCode: 404, body: JSON.stringify({ message: 'RA not found.' }) };
     }
 
-    const balance = parseInt(excorRow[1] || '0');
+    const balance = parseInt(RAsRow[1] || '0');
 
     return {
       statusCode: 200,

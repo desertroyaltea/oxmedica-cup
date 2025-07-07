@@ -73,7 +73,7 @@ exports.handler = async function (event) {
         let aggregatedData = [];
 
         if (week.toLowerCase() === 'total') {
-            const weekSheets = ['Week2', 'Week3']; // Assuming these are the correct sheets
+            const weekSheets = ['Week2', 'Week3']; // Add other weeks here as needed
             for(const sheetName of weekSheets) {
                 const weeklyData = await calculateSheetData(sheets, spreadsheetId, sheetName);
                 aggregatedData = aggregatedData.concat(weeklyData);
@@ -85,19 +85,30 @@ exports.handler = async function (event) {
         let finalPoints = {};
 
         if (type === 'group') {
-            // --- NEW: Logic to handle weighted group scores ---
-            const groupData = {};
-            // Step 1: Aggregate total points and count students for each group
+            // --- NEW: Corrected logic for weighted group scores ---
+            const studentTotals = {};
+            // Step 1: Get total points for each unique student and their group
             for (const student of aggregatedData) {
-                if(student.group){
-                   if (!groupData[student.group]) {
-                       groupData[student.group] = { totalPoints: 0, studentCount: 0 };
-                   }
-                   groupData[student.group].totalPoints += student.points;
-                   groupData[student.group].studentCount += 1;
+                if (!studentTotals[student.name]) {
+                    studentTotals[student.name] = { points: 0, group: student.group };
+                }
+                studentTotals[student.name].points += student.points;
+            }
+            
+            const groupData = {};
+            // Step 2: Aggregate students into groups to get total points and UNIQUE student counts
+            for (const studentName in studentTotals) {
+                const student = studentTotals[studentName];
+                if (student.group) {
+                    if (!groupData[student.group]) {
+                        groupData[student.group] = { totalPoints: 0, studentCount: 0 };
+                    }
+                    groupData[student.group].totalPoints += student.points;
+                    groupData[student.group].studentCount += 1;
                 }
             }
-            // Step 2: Calculate the adjusted score for each group
+
+            // Step 3: Calculate the adjusted score for each group
             for (const groupName in groupData) {
                 const group = groupData[groupName];
                 if (group.studentCount > 0) {

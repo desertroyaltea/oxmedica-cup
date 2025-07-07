@@ -122,7 +122,31 @@
     <div id="quotes-page" class="page container"> <div class="card"> <h2>Add a Quote</h2> <form id="add-quote-form"> <div class="form-group"><label for="quote-input">The Quote</label><input type="text" id="quote-input" required></div> <div class="form-group"><label for="author-input">Who said it?</label><input type="text" id="author-input" required></div> <button type="submit" class="button">Add Quote</button> <p id="quote-result" class="status-message"></p> </form> <hr> <h2>View Quotes</h2> <div class="form-group"><label for="quotes-date">Select Date</label><input type="date" id="quotes-date"></div> <div id="quotes-view-display"></div> </div> <button class="button back-button">Back to Menu</button> <footer><p class="credit">OXMEDICA 2025</p></footer> </div>
     
     <!-- EXCOR Cup Ranking Page -->
-    <div id="cup-page" class="page container"> <div class="card"><h2>OXMEDICA Cup Rankings</h2><div class="ranking-type-selector"><label><input type="radio" name="rankingType" value="student" checked> Student</label><label><input type="radio" name="rankingType" value="group"> RA Group</label></div><div class="form-group"><label for="week-select">Select Week</label><select id="week-select"><option value="">-- Choose a week --</option><option value="Week2">Week 2</option><option value="Week3">Week 3</option></select></div><div id="leaderboard-display"></div></div> <button class="button back-button">Back to Menu</button><footer><p class="credit">OXMEDICA 2025</p></footer> </div>
+    <div id="cup-page" class="page container">
+        <div class="card">
+            <h2>OXMEDICA Cup Rankings</h2>
+            <div class="ranking-type-selector">
+                <label><input type="radio" name="rankingType" value="student" checked> Student</label>
+                <label><input type="radio" name="rankingType" value="group"> RA Group</label>
+            </div>
+            <div class="form-group">
+                <label for="week-select">Select Week</label>
+                <select id="week-select">
+                    <option value="">-- Choose a week --</option>
+                    <option value="Week1">Week 1</option>
+                    <option value="Week2">Week 2</option>
+                    <option value="Week3">Week 3</option>
+                    <option value="Week4">Week 4</option>
+                    <option value="Week5">Week 5</option>
+                    <option value="Week6">Week 6</option>
+                    <option value="Total">Total</option>
+                </select>
+            </div>
+            <div id="leaderboard-display"></div>
+        </div>
+        <button class="button back-button">Back to Menu</button>
+        <footer><p class="credit">OXMEDICA 2025</p></footer>
+    </div>
     
     <!-- Transcript Page -->
     <div id="transcript-page" class="page container"> <div class="card"><h2>Daily Points Transcript</h2><div class="form-group"><label for="transcript-date">Select Date</label><input type="date" id="transcript-date"></div><div id="transcript-display"></div></div> <button class="button back-button">Back to Menu</button><footer><p class="credit">OXMEDICA 2025</p></footer> </div>
@@ -188,26 +212,17 @@
                     showPage('tutor-scanner-page');
                     startScanner('tutor-reader', 'tutor-result');
                 } else {
-                    // --- NEW: Simplified and corrected logic for special users ---
+                    let title = user.type;
                     const coordinators = ['Saud', 'Aban', 'Sultan'];
-                    const isCoordinator = coordinators.includes(user.username);
-                    const isLeadRA = user.type.toLowerCase() === 'lead ra';
-                    
-                    let title = user.type; // Default title
-                    if (isCoordinator) {
+                    if (coordinators.includes(user.username)) {
                         title = "Coordinator";
-                    } else if (isLeadRA) {
+                    } else if (user.type.toLowerCase() === 'lead ra') {
                         title = "Lead RA";
                     }
                     
                     welcomeMessage.textContent = `Welcome ${title} ${selectedText}!`;
                     
-                    // Show cup button for Coordinators OR Lead RA
-                    if (isCoordinator || isLeadRA) {
-                        cupButton.style.display = 'block';
-                    } else {
-                        cupButton.style.display = 'none';
-                    }
+                    cupButton.style.display = (coordinators.includes(user.username) || user.type.toLowerCase() === 'lead ra') ? 'block' : 'none';
                     showPage('menu-page');
                 }
             } else {

@@ -43,6 +43,7 @@ exports.handler = async function (event) {
 
     let targetColumnIndex = -1;
     for (let i = 0; i < eventHeaderRow.length; i++) {
+        // --- FIX: Looking for "RA Points" ---
         if (((eventHeaderRow[i] || '').trim().toLowerCase() === 'ra points') && (dateHeaderRow[i] ? formatDate(new Date(dateHeaderRow[i])) : null) === todayString) {
             targetColumnIndex = i;
             break;

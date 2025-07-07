@@ -12,16 +12,26 @@ exports.handler = async function (event) {
 
         const sheets = google.sheets({ version: 'v4', auth });
         const spreadsheetId = process.env.GOOGLE_SHEET_ID;
-        
-        // Assuming the primary student list is in Week2, column B, starting from row 4
-        const response = await sheets.spreadsheets.values.get({
-            spreadsheetId,
-            range: 'Week2!B4:B', 
-        });
 
-        const rows = response.data.values || [];
-        // Flatten the array, filter out any empty rows, and then sort alphabetically
-        const studentNames = rows.flat().filter(name => name).sort();
+        // 1. Get all RA names to use for filtering
+        const raResponse = await sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: 'RAs!A:A',
+        });
+        const raNames = new Set((raResponse.data.values || []).flat());
+
+        // 2. Get all names from a master week sheet (e.g., Week2)
+        const studentResponse = await sheets.spreadsheets.values.get({
+            spreadsheetId,
+            range: 'Week2!B4:B',
+        });
+        const allNames = studentResponse.data.values || [];
+
+        // 3. Filter out the RAs to get only the student names, then sort
+        const studentNames = allNames
+            .flat()
+            .filter(name => name && !raNames.has(name.trim()))
+            .sort();
 
         return {
             statusCode: 200,

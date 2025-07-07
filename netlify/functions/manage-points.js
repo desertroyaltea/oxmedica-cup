@@ -15,10 +15,22 @@ exports.handler = async function (event) {
   if (event.httpMethod !== 'POST') { return { statusCode: 405, body: 'Method Not Allowed' }; }
   try {
     const { studentName, points, action, reason, raName } = JSON.parse(event.body);
-    // This correctly creates a date object representing the current time in Saudi Arabia.
-    const saudiTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Riyadh' }));
+    
+    // --- START: ROBUST TIMEZONE HANDLING ---
+    const now = new Date(); // Get current server time (UTC)
+
+    // Get the correct date string for Saudi Arabia. This is what we'll log.
+    // Example: "7/7/2025"
+    const dateForLog = now.toLocaleDateString('en-US', { timeZone: 'Asia/Riyadh' });
+
+    // For internal calculations (like finding the week sheet), create a reliable Date object.
+    // new Date('7/7/2025') creates a date object for midnight on that day in the server's timezone (UTC), which is what we want for consistent comparisons.
+    const saudiTime = new Date(dateForLog);
+
+    // This will now correctly format the date as YYYY-MM-DD
     const todayString = formatDate(saudiTime);
     const currentWeekSheet = getWeekSheetName(saudiTime);
+    // --- END: ROBUST TIMEZONE HANDLING ---
 
     const auth = new google.auth.GoogleAuth({ credentials: { client_email: process.env.GOOGLE_CLIENT_EMAIL, private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'), }, scopes: ['https://www.googleapis.com/auth/spreadsheets'], });
     const sheets = google.sheets({ version: 'v4', auth });
@@ -85,9 +97,6 @@ exports.handler = async function (event) {
     // --- 3. Log the transaction in the Points Sheet ---
     const pointsLogSheetName = 'Points';
     
-    // --- FIX: Correctly format the date and recorder's name for the log ---
-    const dateForLog = saudiTime.toLocaleDateString('en-US', { timeZone: 'Asia/Riyadh' });
-    
     const coordinators = ['Saud', 'Aban', 'Sultan'];
     let recorderDisplayName = `RA ${raName}`; // Default format
     if (coordinators.includes(raName)) {
@@ -95,9 +104,9 @@ exports.handler = async function (event) {
     }
     
     const pointsLogData = [
-        dateForLog, 
+        dateForLog, // Use the correctly formatted date string
         studentName, 
-        recorderDisplayName, // Use the newly formatted name
+        recorderDisplayName,
         pointsChange > 0 ? `+${pointsChange}` : pointsChange.toString(), 
         reason, 
         studentRaGroupForLog

@@ -78,10 +78,15 @@ exports.handler = async function (event) {
     }
 
     const studentRaGroupName = (rows[targetRowIndex][2] || '').trim();
-    if (!isGiverCoordinator && studentRaGroupName === raName) {
+    
+    // --- NEW: Updated permissions logic ---
+    // An RA cannot ADD points to their own students, but they CAN remove them.
+    if (!isGiverCoordinator && studentRaGroupName === raName && action === 'add') {
+        // Refund points because this action is invalid.
         await sheets.spreadsheets.values.update({ spreadsheetId, range: `${raSheetName}!${raCellToUpdate}`, valueInputOption: 'USER_ENTERED', resource: { values: [[currentRaBalance]] } });
-        return { statusCode: 200, body: JSON.stringify({ status: 'error', message: "You cannot award points to students in your own group." }) };
+        return { statusCode: 200, body: JSON.stringify({ status: 'error', message: "You cannot ADD points to students in your own group." }) };
     }
+    // --- End of new check ---
 
     const studentRaGroupForLog = `RA ${studentRaGroupName}'s Group`;
     const currentStudentPoints = parseInt(rows[targetRowIndex][targetColumnIndex] || '0');
@@ -91,7 +96,6 @@ exports.handler = async function (event) {
     const studentCellToUpdate = toA1(targetColumnIndex) + (targetRowIndex + 1);
     await sheets.spreadsheets.values.update({ spreadsheetId, range: `${currentWeekSheet}!${studentCellToUpdate}`, valueInputOption: 'USER_ENTERED', resource: { values: [[newStudentPoints]] } });
 
-    // --- NEW: Only log to the 'Points' sheet if an RA gives points to a student ---
     if (!isGiverCoordinator && !isReceiverRA) {
         const pointsLogSheetName = 'Points';
         const dateForLog = saudiTime.toLocaleDateString('en-US', { timeZone: 'Asia/Riyadh' });

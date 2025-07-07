@@ -15,6 +15,7 @@ exports.handler = async function (event) {
   if (event.httpMethod !== 'POST') { return { statusCode: 405, body: 'Method Not Allowed' }; }
   try {
     const { studentName, points, action, reason, raName } = JSON.parse(event.body);
+    // This correctly creates a date object representing the current time in Saudi Arabia.
     const saudiTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Riyadh' }));
     const todayString = formatDate(saudiTime);
     const currentWeekSheet = getWeekSheetName(saudiTime);
@@ -67,14 +68,11 @@ exports.handler = async function (event) {
         return { statusCode: 200, body: JSON.stringify({ status: 'error', message: `Student '${studentName}' not found in ${currentWeekSheet}.` }) };
     }
 
-    // --- NEW: Check if the RA is awarding points to their own group ---
     const studentRaGroupName = (rows[targetRowIndex][2] || '').trim();
     if (studentRaGroupName === raName) {
-        // Refund points because transaction is invalid
         await sheets.spreadsheets.values.update({ spreadsheetId, range: `${raSheetName}!${raCellToUpdate}`, valueInputOption: 'USER_ENTERED', resource: { values: [[currentRaBalance]] } });
         return { statusCode: 200, body: JSON.stringify({ status: 'error', message: "You cannot award points to students in your own group." }) };
     }
-    // --- End of new check ---
 
     const studentRaGroupForLog = `RA ${studentRaGroupName}'s Group`;
     const currentStudentPoints = parseInt(rows[targetRowIndex][targetColumnIndex] || '0');
@@ -84,9 +82,27 @@ exports.handler = async function (event) {
     const studentCellToUpdate = toA1(targetColumnIndex) + (targetRowIndex + 1);
     await sheets.spreadsheets.values.update({ spreadsheetId, range: `${currentWeekSheet}!${studentCellToUpdate}`, valueInputOption: 'USER_ENTERED', resource: { values: [[newStudentPoints]] } });
 
+    // --- 3. Log the transaction in the Points Sheet ---
     const pointsLogSheetName = 'Points';
+    
+    // --- FIX: Correctly format the date and recorder's name for the log ---
     const dateForLog = saudiTime.toLocaleDateString('en-US', { timeZone: 'Asia/Riyadh' });
-    const pointsLogData = [dateForLog, studentName, raName, pointsChange > 0 ? `+${pointsChange}` : pointsChange.toString(), reason, studentRaGroupForLog];
+    
+    const coordinators = ['Saud', 'Aban', 'Sultan'];
+    let recorderDisplayName = `RA ${raName}`; // Default format
+    if (coordinators.includes(raName)) {
+        recorderDisplayName = `Coordinator ${raName}`; // Special format for coordinators
+    }
+    
+    const pointsLogData = [
+        dateForLog, 
+        studentName, 
+        recorderDisplayName, // Use the newly formatted name
+        pointsChange > 0 ? `+${pointsChange}` : pointsChange.toString(), 
+        reason, 
+        studentRaGroupForLog
+    ];
+    
     await sheets.spreadsheets.values.append({ spreadsheetId, range: pointsLogSheetName, valueInputOption: 'USER_ENTERED', resource: { values: [pointsLogData] } });
     
     const actionVerb = action === 'add' ? 'Added' : 'Removed';

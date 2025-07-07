@@ -188,11 +188,26 @@
                     showPage('tutor-scanner-page');
                     startScanner('tutor-reader', 'tutor-result');
                 } else {
-                    let title = user.type;
-                    if(user.username.includes("Saud")) title = "Coordinator";
+                    // --- NEW: Simplified and corrected logic for special users ---
+                    const coordinators = ['Saud', 'Aban', 'Sultan'];
+                    const isCoordinator = coordinators.includes(user.username);
+                    const isLeadRA = user.type.toLowerCase() === 'lead ra';
+                    
+                    let title = user.type; // Default title
+                    if (isCoordinator) {
+                        title = "Coordinator";
+                    } else if (isLeadRA) {
+                        title = "Lead RA";
+                    }
+                    
                     welcomeMessage.textContent = `Welcome ${title} ${selectedText}!`;
                     
-                    cupButton.style.display = user.type.toLowerCase() === 'lead ra' ? 'block' : 'none';
+                    // Show cup button for Coordinators OR Lead RA
+                    if (isCoordinator || isLeadRA) {
+                        cupButton.style.display = 'block';
+                    } else {
+                        cupButton.style.display = 'none';
+                    }
                     showPage('menu-page');
                 }
             } else {
@@ -206,6 +221,7 @@
         document.getElementById('goto-quotes').addEventListener('click', () => { const dateInput = document.getElementById('quotes-date'); if (!dateInput.value) { dateInput.value = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Riyadh' })).toISOString().split('T')[0]; } fetchQuotes(); showPage('quotes-page'); });
         document.querySelectorAll('.back-button').forEach(button => { button.addEventListener('click', () => { if (scanner) { try { scanner.clear(); } catch(e) {} scanner = null; } showPage('menu-page'); }); });
         
+        // --- All other functions remain the same ---
         const addQuoteForm = document.getElementById('add-quote-form');
         const quoteResultEl = document.getElementById('quote-result');
         const quotesDateInput = document.getElementById('quotes-date');

@@ -1,6 +1,5 @@
 const { google } = require('googleapis');
 
-// Helper function to format a date object into a consistent string (e.g., "6/24/2025")
 function getLocaleDateString(date) {
     return new Date(date).toLocaleDateString('en-US', { timeZone: 'Asia/Riyadh' });
 }
@@ -32,26 +31,23 @@ exports.handler = async function (event) {
 
         const response = await sheets.spreadsheets.values.get({
             spreadsheetId,
-            range: `${sheetName}!A:F`, // Fetch up to column F
+            range: `${sheetName}!A:F`,
         });
 
         const rows = response.data.values || [];
         const transcriptEntries = [];
 
         for (const row of rows) {
-            // Ensure row is valid and has a date in the first column
             if (!row || !row[0]) continue;
             
             const entryDateString = getLocaleDateString(row[0]);
 
             if (entryDateString === requestedDateString) {
-                // De-structure the row to get all the needed values
-                const [ , , RAsName, points, reason, studentRAsGroup] = row;
+                const [ , , raName, points, reason, studentRaGroup] = row;
                 
-                // --- NEW: Return a structured object instead of a string ---
                 const entryData = {
-                    RAsName: RAsName || 'N/A',
-                    studentRAsGroup: studentRAsGroup || 'N/A',
+                    raName: raName || 'N/A',
+                    studentRaGroup: studentRaGroup || 'N/A',
                     points: points || 'N/A',
                     reason: reason || 'N/A'
                 };
@@ -61,7 +57,7 @@ exports.handler = async function (event) {
 
         return {
             statusCode: 200,
-            body: JSON.stringify(transcriptEntries.reverse()), // Show most recent first
+            body: JSON.stringify(transcriptEntries.reverse()),
         };
 
     } catch (error) {

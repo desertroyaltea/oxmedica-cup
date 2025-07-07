@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OXMEDICA Cup</title>
+    <title>The EXCOR System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -108,20 +108,19 @@
 
     <!-- Points Page -->
     <div id="points-page" class="page container">
-        <div class="card"><h2>RA Points</h2><p id="ra-balance">Your Balance: Loading...</p><div class="form-group"><label for="target-select">Select Target</label><select id="target-select" name="target-select"><option>Loading...</option></select></div><div class="form-group"><label for="points-input">Points</label><input type="number" id="points-input" placeholder="e.g., 5" required></div><div class="form-group"><label for="reason-input">Reason</label><input type="text" id="reason-input" placeholder="e.g., Cleaning up" required></div><div class="button-group"><button id="add-points" class="button add">Add +</button><button id="remove-points" class="button remove">Remove -</button></div><p id="points-result" class="status-message"></p></div>
-        <button class="button back-button">Back to Menu</button><footer><p class="credit">OXMEDICA 2025</p></footer>
-    </div>
-    
-    <!-- EXCOR Cup Ranking Page -->
-    <div id="cup-page" class="page container">
         <div class="card">
-            <h2>OXMEDICA Cup Rankings</h2>
-            <div class="ranking-type-selector">
-                <label><input type="radio" name="rankingType" value="student" checked> Student</label>
-                <label><input type="radio" name="rankingType" value="group"> RA Group</label>
-                <label><input type="radio" name="rankingType" value="ra"> RAs</label>
+            <h2>RA Points</h2>
+            <p id="ra-balance">Your Balance: Loading...</p>
+            <div class="form-group">
+                <label for="target-select">Select Target</label>
+                <!-- NEW: Searchable Input -->
+                <input type="text" id="target-select" list="target-list" placeholder="Type to search...">
+                <datalist id="target-list"></datalist>
             </div>
-            <div id="leaderboard-display"><p>Select a ranking type to view results.</p></div>
+            <div class="form-group"><label for="points-input">Points</label><input type="number" id="points-input" placeholder="e.g., 5" required></div>
+            <div class="form-group"><label for="reason-input">Reason</label><input type="text" id="reason-input" placeholder="e.g., Won competition" required></div>
+            <div class="button-group"><button id="add-points" class="button add">Add +</button><button id="remove-points" class="button remove">Remove -</button></div>
+            <p id="points-result" class="status-message"></p>
         </div>
         <button class="button back-button">Back to Menu</button>
         <footer><p class="credit">OXMEDICA 2025</p></footer>
@@ -129,6 +128,7 @@
     
     <!-- Other pages remain the same -->
     <div id="quotes-page" class="page container"> <div class="card"> <h2>Add a Quote</h2> <form id="add-quote-form"> <div class="form-group"><label for="quote-input">The Quote</label><input type="text" id="quote-input" required></div> <div class="form-group"><label for="author-input">Who said it?</label><input type="text" id="author-input" required></div> <button type="submit" class="button">Add Quote</button> <p id="quote-result" class="status-message"></p> </form> <hr> <h2>View Quotes</h2> <div class="form-group"><label for="quotes-date">Select Date</label><input type="date" id="quotes-date"></div> <div id="quotes-view-display"></div> </div> <button class="button back-button">Back to Menu</button> <footer><p class="credit">OXMEDICA 2025</p></footer> </div>
+    <div id="cup-page" class="page container"> <div class="card"><h2>OXMEDICA Cup Rankings</h2><div class="ranking-type-selector"><label><input type="radio" name="rankingType" value="student" checked> Student</label><label><input type="radio" name="rankingType" value="group"> RA Group</label><label><input type="radio" name="rankingType" value="ra"> RAs</label></div><div id="leaderboard-display"><p>Select a ranking type to view results.</p></div></div> <button class="button back-button">Back to Menu</button><footer><p class="credit">OXMEDICA 2025</p></footer> </div>
     <div id="transcript-page" class="page container"> <div class="card"><h2>Daily Points Transcript</h2><div class="form-group"><label for="transcript-date">Select Date</label><input type="date" id="transcript-date"></div><div id="transcript-display"></div></div> <button class="button back-button">Back to Menu</button><footer><p class="credit">OXMEDICA 2025</p></footer> </div>
 
     <script>
@@ -136,7 +136,8 @@
         const pages = document.querySelectorAll('.page');
         const loginForm = document.getElementById('login-form');
         const welcomeMessage = document.getElementById('welcome-message');
-        const targetSelect = document.getElementById('target-select');
+        const targetSelectInput = document.getElementById('target-select');
+        const targetList = document.getElementById('target-list');
         const raBalanceEl = document.getElementById('ra-balance');
         const cupButton = document.getElementById('goto-cup');
         const usernameSelect = document.getElementById('username');
@@ -211,19 +212,18 @@
             label.textContent = isCoordinator ? 'Select RA' : 'Select Student';
 
             try {
-                targetSelect.innerHTML = '<option>Loading...</option>';
+                targetList.innerHTML = ''; // Clear previous options
+                targetSelectInput.value = ''; // Clear input field
                 const response = await fetch(endpoint);
                 if (!response.ok) throw new Error('Failed to load list');
                 const targets = await response.json();
-                targetSelect.innerHTML = '';
                 targets.forEach(target => {
                     const option = document.createElement('option');
                     option.value = target;
-                    option.textContent = target;
-                    targetSelect.appendChild(option);
+                    targetList.appendChild(option);
                 });
             } catch (error) {
-                targetSelect.innerHTML = '<option>Could not load list</option>';
+                targetSelectInput.placeholder = 'Could not load list';
             }
         }
         
@@ -250,7 +250,7 @@
         rankingTypeRadios.forEach(radio => radio.addEventListener('change', fetchRankings));
         function renderLeaderboard(data, type) { leaderboardDisplay.innerHTML = ''; if (data.length === 0) { leaderboardDisplay.innerHTML = '<p>No points data found.</p>'; return; } data.forEach((item, index) => { const rank = index + 1; const leaderboardItem = document.createElement('div'); leaderboardItem.className = `leaderboard-item rank-${rank}`; leaderboardItem.innerHTML = `<div class="rank">#${rank}</div><div class="name">${item.name}</div><div class="points">${item.points} pts</div>`; leaderboardDisplay.appendChild(leaderboardItem); }); }
         async function fetchRaBalance() { raBalanceEl.textContent = 'Your Balance: Loading...'; if (!loggedInUser) { raBalanceEl.textContent = 'Your Balance: Error - Not logged in.'; return; } try { const response = await fetch('/.netlify/functions/get-ra-balance', { method: 'POST', body: JSON.stringify({ raName: loggedInUser.username }) }); if (!response.ok) { const errorText = await response.text(); throw new Error(`Failed to fetch balance. Server responded with: ${response.status} ${errorText}`); } const data = await response.json(); if (typeof data.balance !== 'undefined') { raBalanceEl.textContent = `Your Balance: ${data.balance} Points`; } else { throw new Error('Balance not found in server response.'); } } catch (error) { console.error("fetchRaBalance Error:", error); raBalanceEl.textContent = 'Your Balance: Could not load.'; } }
-        async function handlePoints(action) { const targetName = targetSelect.value; const points = document.getElementById('points-input').value; const reason = document.getElementById('reason-input').value; const resultEl = document.getElementById('points-result'); if (!points || parseInt(points) <= 0) { resultEl.className = 'status-message error'; resultEl.textContent = 'Please enter a valid number of points.'; return; } if (!reason.trim()) { resultEl.className = 'status-message error'; resultEl.textContent = 'A reason is required.'; return; } resultEl.className = 'status-message info'; resultEl.textContent = `${action === 'add' ? 'Adding' : 'Removing'} points...`; try { const response = await fetch('/.netlify/functions/manage-points', { method: 'POST', body: JSON.stringify({ studentName: targetName, points: parseInt(points), action, reason, raName: loggedInUser.username }) }); const data = await response.json(); resultEl.textContent = data.message; resultEl.className = `status-message ${data.status}`; if (data.status === 'success') { fetchRaBalance(); } } catch (error) { resultEl.textContent = 'Error communicating with server.'; resultEl.className = 'status-message error'; } }
+        async function handlePoints(action) { const targetName = targetSelectInput.value; const points = document.getElementById('points-input').value; const reason = document.getElementById('reason-input').value; const resultEl = document.getElementById('points-result'); if (!points || parseInt(points) <= 0) { resultEl.className = 'status-message error'; resultEl.textContent = 'Please enter a valid number of points.'; return; } if (!reason.trim()) { resultEl.className = 'status-message error'; resultEl.textContent = 'A reason is required.'; return; } resultEl.className = 'status-message info'; resultEl.textContent = `${action === 'add' ? 'Adding' : 'Removing'} points...`; try { const response = await fetch('/.netlify/functions/manage-points', { method: 'POST', body: JSON.stringify({ studentName: targetName, points: parseInt(points), action, reason, raName: loggedInUser.username }) }); const data = await response.json(); resultEl.textContent = data.message; resultEl.className = `status-message ${data.status}`; if (data.status === 'success') { fetchRaBalance(); } } catch (error) { resultEl.textContent = 'Error communicating with server.'; resultEl.className = 'status-message error'; } }
         document.getElementById('add-points').addEventListener('click', () => handlePoints('add'));
         document.getElementById('remove-points').addEventListener('click', () => handlePoints('remove'));
     </script>

@@ -1,50 +1,65 @@
 const { google } = require('googleapis');
 
-// This function now calculates points and returns student names, their group, and their points.
-async function calculateSheetData(sheets, spreadsheetId, sheetName) {
+// This function now returns a more detailed object with total points and student counts for each group.
+async function getWeeklyGroupData(sheets, spreadsheetId, sheetName) {
     const response = await sheets.spreadsheets.values.get({
         spreadsheetId,
-        range: sheetName, // Read the whole sheet for dynamic columns
+        range: sheetName, // Read the whole sheet
     });
 
     const rows = response.data.values || [];
     if (rows.length < 4) {
-        return []; // Return empty array if not enough data
+        return {}; // Not enough data to process
     }
 
-    const eventHeaderRow = rows[0]; // Events are in Row 1
-    const studentData = [];
+    const eventHeaderRow = rows[0];
+    const groupData = {};
 
     // Find all columns that are 'RA Points'
     const pointColumnIndices = [];
-    for (let i = 3; i < eventHeaderRow.length; i++) { // Start from column D (index 3)
+    for (let i = 3; i < eventHeaderRow.length; i++) {
         if ((eventHeaderRow[i] || '').trim().toLowerCase() === 'ra points') {
             pointColumnIndices.push(i);
         }
     }
 
-    // Iterate through student rows (starting from row 4, which is index 3)
+    // Iterate through all possible student rows to build a complete roster and point total for each group
     for (let i = 3; i < rows.length; i++) {
         const studentRow = rows[i];
-        // Ensure row has a student name (col B) and an RA group (col C)
-        if (!studentRow || !studentRow[1] || !studentRow[2]) continue; 
+        // A student must have a name (col B) and a group (col C) to be counted
+        if (!studentRow || !studentRow[1] || !studentRow[2]) continue;
 
         const studentName = studentRow[1].trim();
         const raGroup = studentRow[2].trim();
-        let totalPoints = 0;
 
-        // Sum points only from the 'RA Points' columns
+        // Initialize the group if it's the first time we see it
+        if (!groupData[raGroup]) {
+            groupData[raGroup] = { totalPoints: 0, studentCount: 0, members: new Set() };
+        }
+
+        // Add the student to the group's member list to count unique students
+        groupData[raGroup].members.add(studentName);
+
+        // Sum this student's points for the week
+        let studentWeeklyPoints = 0;
         for (const colIndex of pointColumnIndices) {
             const points = parseInt(studentRow[colIndex] || '0');
             if (!isNaN(points)) {
-                totalPoints += points;
+                studentWeeklyPoints += points;
             }
         }
         
-        studentData.push({ name: studentName, group: raGroup, points: totalPoints });
+        // Add the student's weekly points to their group's total
+        groupData[raGroup].totalPoints += studentWeeklyPoints;
+    }
+
+    // Finalize the student count for each group
+    for (const groupName in groupData) {
+        groupData[groupName].studentCount = groupData[groupName].members.size;
+        delete groupData[groupName].members; // Clean up the temporary set
     }
     
-    return studentData;
+    return groupData;
 }
 
 
@@ -70,65 +85,59 @@ exports.handler = async function (event) {
         const sheets = google.sheets({ version: 'v4', auth });
         const spreadsheetId = process.env.GOOGLE_SHEET_ID;
 
-        let aggregatedData = [];
+        let finalResults = {};
 
         if (week.toLowerCase() === 'total') {
-            const weekSheets = ['Week2', 'Week3']; // Add other weeks here as needed
+            const weekSheets = ['Week2', 'Week3']; // Add other weeks as needed
+            const totalData = {};
+
             for(const sheetName of weekSheets) {
-                const weeklyData = await calculateSheetData(sheets, spreadsheetId, sheetName);
-                aggregatedData = aggregatedData.concat(weeklyData);
+                const weeklyGroupData = await getWeeklyGroupData(sheets, spreadsheetId, sheetName);
+                for (const groupName in weeklyGroupData) {
+                    if (!totalData[groupName]) {
+                        totalData[groupName] = { totalPoints: 0, studentCount: 0 };
+                    }
+                    totalData[groupName].totalPoints += weeklyGroupData[groupName].totalPoints;
+                    // The student count should be taken from a master list or the last week, assuming it's stable.
+                    // For this logic, we'll use the count from the last processed week for that group.
+                    totalData[groupName].studentCount = weeklyGroupData[groupName].studentCount;
+                }
             }
+            finalResults = totalData;
         } else {
-            aggregatedData = await calculateSheetData(sheets, spreadsheetId, week);
+            finalResults = await getWeeklyGroupData(sheets, spreadsheetId, week);
         }
 
-        let finalPoints = {};
+        let rankedList;
 
         if (type === 'group') {
-            // --- NEW: Corrected logic for weighted group scores ---
-            const studentTotals = {};
-            // Step 1: Get total points for each unique student and their group
-            for (const student of aggregatedData) {
-                if (!studentTotals[student.name]) {
-                    studentTotals[student.name] = { points: 0, group: student.group };
-                }
-                studentTotals[student.name].points += student.points;
-            }
-            
-            const groupData = {};
-            // Step 2: Aggregate students into groups to get total points and UNIQUE student counts
-            for (const studentName in studentTotals) {
-                const student = studentTotals[studentName];
-                if (student.group) {
-                    if (!groupData[student.group]) {
-                        groupData[student.group] = { totalPoints: 0, studentCount: 0 };
-                    }
-                    groupData[student.group].totalPoints += student.points;
-                    groupData[student.group].studentCount += 1;
-                }
-            }
-
-            // Step 3: Calculate the adjusted score for each group
-            for (const groupName in groupData) {
-                const group = groupData[groupName];
+            const groupScores = [];
+            for (const groupName in finalResults) {
+                const group = finalResults[groupName];
                 if (group.studentCount > 0) {
                     const adjustedScore = Math.round(group.totalPoints * (7 / group.studentCount));
-                    finalPoints[groupName] = adjustedScore;
+                    groupScores.push({ name: groupName, points: adjustedScore });
                 }
             }
-        } else { // Default to student ranking
-            // Aggregate points by student name
-             for (const student of aggregatedData) {
-                if(student.name){
-                   finalPoints[student.name] = (finalPoints[student.name] || 0) + student.points;
-                }
+            rankedList = groupScores.sort((a, b) => b.points - a.points);
+        } else { // Student ranking
+            // For student totals, we need to re-aggregate across all weeks if 'Total' is selected
+            const studentPoints = {};
+            const allStudentData = [];
+            const sheetsToProcess = week.toLowerCase() === 'total' ? ['Week2', 'Week3'] : [week];
+            
+            for(const sheetName of sheetsToProcess) {
+                const weeklyStudentData = await calculateSheetData(sheets, spreadsheetId, sheetName); // A simplified version for student points
+                allStudentData.push(...weeklyStudentData);
             }
-        }
 
-        // Convert the aggregated points map to an array and sort it
-        const rankedList = Object.entries(finalPoints)
-            .map(([name, points]) => ({ name, points }))
-            .sort((a, b) => b.points - a.points);
+            for(const student of allStudentData){
+                studentPoints[student.name] = (studentPoints[student.name] || 0) + student.points;
+            }
+            rankedList = Object.entries(studentPoints)
+                .map(([name, points]) => ({ name, points }))
+                .sort((a, b) => b.points - a.points);
+        }
 
         return {
             statusCode: 200,
@@ -143,3 +152,30 @@ exports.handler = async function (event) {
         };
     }
 };
+
+// A separate, simplified function is needed for the student ranking part of the 'Total' calculation
+async function calculateSheetData(sheets, spreadsheetId, sheetName) {
+    const response = await sheets.spreadsheets.values.get({ spreadsheetId, range: sheetName });
+    const rows = response.data.values || [];
+    if (rows.length < 4) return [];
+    const eventHeaderRow = rows[0];
+    const studentData = [];
+    const pointColumnIndices = [];
+    for (let i = 3; i < eventHeaderRow.length; i++) {
+        if ((eventHeaderRow[i] || '').trim().toLowerCase() === 'ra points') {
+            pointColumnIndices.push(i);
+        }
+    }
+    for (let i = 3; i < rows.length; i++) {
+        const studentRow = rows[i];
+        if (!studentRow || !studentRow[1]) continue;
+        const studentName = studentRow[1].trim();
+        let totalPoints = 0;
+        for (const colIndex of pointColumnIndices) {
+            const points = parseInt(studentRow[colIndex] || '0');
+            if (!isNaN(points)) totalPoints += points;
+        }
+        studentData.push({ name: studentName, points: totalPoints });
+    }
+    return studentData;
+}

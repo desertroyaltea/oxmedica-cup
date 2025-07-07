@@ -18,7 +18,7 @@ exports.handler = async function (event) {
 
     const sheets = google.sheets({ version: 'v4', auth });
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
-    const sheetName = 'EXCORS';
+    const sheetName = 'RAs';
 
     const response = await sheets.spreadsheets.values.get({
       spreadsheetId,
@@ -29,7 +29,7 @@ exports.handler = async function (event) {
     const excorRow = rows.find(row => row[0] === excorName);
 
     if (!excorRow) {
-      return { statusCode: 404, body: JSON.stringify({ message: 'EXCOR not found.' }) };
+      return { statusCode: 404, body: JSON.stringify({ message: 'RA not found.' }) };
     }
 
     const balance = parseInt(excorRow[1] || '0');
@@ -40,10 +40,10 @@ exports.handler = async function (event) {
     };
 
   } catch (error) {
-    console.error('Error fetching EXCOR balance:', error);
+    console.error('Error fetching RA balance:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ message: 'Failed to fetch EXCOR balance.' }),
+      body: JSON.stringify({ message: 'Failed to fetch RA balance.' }),
     };
   }
 };

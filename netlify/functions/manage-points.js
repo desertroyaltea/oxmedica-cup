@@ -23,10 +23,10 @@ function getWeekSheetName(currentDate) {
     // Dates are set in YYYY, MM-1, DD format for reliability
     const week6_start = new Date(2025, 7, 10); // Aug 10
     const week5_start = new Date(2025, 7, 3);  // Aug 3
-    const week4_start = new Date(2025, 6, 27); // July 27
-    const week3_start = new Date(2025, 6, 20); // July 20
-    const week2_start = new Date(2025, 6, 13); // July 13
-    const week1_start = new Date(2025, 6, 6);  // July 6
+    const week4_start = new Date(2025, 6, 20); // July 27
+    const week3_start = new Date(2025, 6, 13); // July 20
+    const week2_start = new Date(2025, 6, 6); // July 13
+    const week1_start = new Date(2025, 5, 6);  // July 6
 
     if (currentDate >= week6_start) return 'Week6';
     if (currentDate >= week5_start) return 'Week5';
@@ -64,7 +64,7 @@ exports.handler = async function (event) {
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
 
     // --- 1. Check and Update EXCOR Balance ---
-    const excorSheetName = 'EXCORS';
+    const excorSheetName = 'RAs';
     const excorData = await sheets.spreadsheets.values.get({
         spreadsheetId,
         range: `${excorSheetName}!A:B`,
@@ -73,7 +73,7 @@ exports.handler = async function (event) {
     const excorRowIndex = excorRows.findIndex(row => row[0] === excorName);
 
     if (excorRowIndex === -1) {
-        return { statusCode: 200, body: JSON.stringify({ status: 'error', message: `EXCOR '${excorName}' not found.` }) };
+        return { statusCode: 200, body: JSON.stringify({ status: 'error', message: `RA '${excorName}' not found.` }) };
     }
     const currentExcorBalance = parseInt(excorRows[excorRowIndex][1] || '0');
 
@@ -99,7 +99,7 @@ exports.handler = async function (event) {
     let targetColumnIndex = -1;
     for (let i = 0; i < eventHeaderRow.length; i++) {
         // --- CHANGE: Looking for "EXCOR Points" ---
-        if (((eventHeaderRow[i] || '').trim().toLowerCase() === 'excor points') && (dateHeaderRow[i] ? formatDate(new Date(dateHeaderRow[i])) : null) === todayString) {
+        if (((eventHeaderRow[i] || '').trim().toLowerCase() === 'daily points') && (dateHeaderRow[i] ? formatDate(new Date(dateHeaderRow[i])) : null) === todayString) {
             targetColumnIndex = i;
             break;
         }
@@ -108,7 +108,7 @@ exports.handler = async function (event) {
     if (targetColumnIndex === -1) {
         // If we fail here, we must refund the EXCOR's points
         await sheets.spreadsheets.values.update({ spreadsheetId, range: `${excorSheetName}!${excorCellToUpdate}`, valueInputOption: 'USER_ENTERED', resource: { values: [[currentExcorBalance]] } });
-        return { statusCode: 200, body: JSON.stringify({ status: 'error', message: `Could not find 'EXCOR Points' column for today in ${currentWeekSheet}.` }) };
+        return { statusCode: 200, body: JSON.stringify({ status: 'error', message: `Could not find 'Daily Points' column for today in ${currentWeekSheet}.` }) };
     }
 
     let targetRowIndex = -1;

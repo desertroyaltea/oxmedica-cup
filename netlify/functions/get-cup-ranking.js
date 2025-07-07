@@ -19,8 +19,8 @@ async function calculateSheetData(sheets, spreadsheetId, sheetName) {
     // Find all columns that are 'EXCOR Points'
     const pointColumnIndices = [];
     for (let i = 3; i < eventHeaderRow.length; i++) { // Start from column D (index 3)
-        // --- CHANGE 2: Looking for "EXCOR Points" instead of "Daily Points" ---
-        if ((eventHeaderRow[i] || '').trim().toLowerCase() === 'excor points') {
+        // --- CHANGE 2: Looking for "Total Points" instead of "Daily Points" ---
+        if ((eventHeaderRow[i] || '').trim().toLowerCase() === 'total points') {
             pointColumnIndices.push(i);
         }
     }

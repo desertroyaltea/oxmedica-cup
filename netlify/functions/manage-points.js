@@ -15,26 +15,23 @@ exports.handler = async function (event) {
   if (event.httpMethod !== 'POST') { return { statusCode: 405, body: 'Method Not Allowed' }; }
   try {
     const { studentName, points, action, reason, raName } = JSON.parse(event.body);
-    
-    // --- START: ROBUST TIMEZONE HANDLING ---
-    const now = new Date(); // Get current server time (UTC)
-
-    // Get the correct date string for Saudi Arabia. This is what we'll log.
-    // Example: "7/7/2025"
-    const dateForLog = now.toLocaleDateString('en-US', { timeZone: 'Asia/Riyadh' });
-
-    // For internal calculations (like finding the week sheet), create a reliable Date object.
-    // new Date('7/7/2025') creates a date object for midnight on that day in the server's timezone (UTC), which is what we want for consistent comparisons.
-    const saudiTime = new Date(dateForLog);
-
-    // This will now correctly format the date as YYYY-MM-DD
+    const saudiTime = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Riyadh' }));
     const todayString = formatDate(saudiTime);
     const currentWeekSheet = getWeekSheetName(saudiTime);
-    // --- END: ROBUST TIMEZONE HANDLING ---
+    const coordinators = ['Saud', 'Aban', 'Sultan'];
+    const isGiverCoordinator = coordinators.includes(raName);
 
     const auth = new google.auth.GoogleAuth({ credentials: { client_email: process.env.GOOGLE_CLIENT_EMAIL, private_key: process.env.GOOGLE_PRIVATE_KEY.replace(/\\n/g, '\n'), }, scopes: ['https://www.googleapis.com/auth/spreadsheets'], });
     const sheets = google.sheets({ version: 'v4', auth });
     const spreadsheetId = process.env.GOOGLE_SHEET_ID;
+
+    const allRaResponse = await sheets.spreadsheets.values.get({ spreadsheetId, range: 'RAs!A:A' });
+    const allRaNames = new Set((allRaResponse.data.values || []).flat());
+    const isReceiverRA = allRaNames.has(studentName);
+
+    if (!isGiverCoordinator && isReceiverRA) {
+        return { statusCode: 200, body: JSON.stringify({ status: 'error', message: "RAs can only award points to students." }) };
+    }
 
     const raSheetName = 'RAs';
     const raData = await sheets.spreadsheets.values.get({ spreadsheetId, range: `${raSheetName}!A:B`, });
@@ -77,11 +74,11 @@ exports.handler = async function (event) {
 
     if (targetRowIndex === -1) {
         await sheets.spreadsheets.values.update({ spreadsheetId, range: `${raSheetName}!${raCellToUpdate}`, valueInputOption: 'USER_ENTERED', resource: { values: [[currentRaBalance]] } });
-        return { statusCode: 200, body: JSON.stringify({ status: 'error', message: `Student '${studentName}' not found in ${currentWeekSheet}.` }) };
+        return { statusCode: 200, body: JSON.stringify({ status: 'error', message: `Target '${studentName}' not found in ${currentWeekSheet}.` }) };
     }
 
     const studentRaGroupName = (rows[targetRowIndex][2] || '').trim();
-    if (studentRaGroupName === raName) {
+    if (!isGiverCoordinator && studentRaGroupName === raName) {
         await sheets.spreadsheets.values.update({ spreadsheetId, range: `${raSheetName}!${raCellToUpdate}`, valueInputOption: 'USER_ENTERED', resource: { values: [[currentRaBalance]] } });
         return { statusCode: 200, body: JSON.stringify({ status: 'error', message: "You cannot award points to students in your own group." }) };
     }
@@ -94,25 +91,23 @@ exports.handler = async function (event) {
     const studentCellToUpdate = toA1(targetColumnIndex) + (targetRowIndex + 1);
     await sheets.spreadsheets.values.update({ spreadsheetId, range: `${currentWeekSheet}!${studentCellToUpdate}`, valueInputOption: 'USER_ENTERED', resource: { values: [[newStudentPoints]] } });
 
-    // --- 3. Log the transaction in the Points Sheet ---
-    const pointsLogSheetName = 'Points';
-    
-    const coordinators = ['Saud', 'Aban', 'Sultan'];
-    let recorderDisplayName = `RA ${raName}`; // Default format
-    if (coordinators.includes(raName)) {
-        recorderDisplayName = `Coordinator ${raName}`; // Special format for coordinators
+    // --- NEW: Only log to the 'Points' sheet if an RA gives points to a student ---
+    if (!isGiverCoordinator && !isReceiverRA) {
+        const pointsLogSheetName = 'Points';
+        const dateForLog = saudiTime.toLocaleDateString('en-US', { timeZone: 'Asia/Riyadh' });
+        let recorderDisplayName = `RA ${raName}`;
+        
+        const pointsLogData = [
+            dateForLog, 
+            studentName, 
+            recorderDisplayName,
+            pointsChange > 0 ? `+${pointsChange}` : pointsChange.toString(), 
+            reason, 
+            studentRaGroupForLog
+        ];
+        
+        await sheets.spreadsheets.values.append({ spreadsheetId, range: pointsLogSheetName, valueInputOption: 'USER_ENTERED', resource: { values: [pointsLogData] } });
     }
-    
-    const pointsLogData = [
-        dateForLog, // Use the correctly formatted date string
-        studentName, 
-        recorderDisplayName,
-        pointsChange > 0 ? `+${pointsChange}` : pointsChange.toString(), 
-        reason, 
-        studentRaGroupForLog
-    ];
-    
-    await sheets.spreadsheets.values.append({ spreadsheetId, range: pointsLogSheetName, valueInputOption: 'USER_ENTERED', resource: { values: [pointsLogData] } });
     
     const actionVerb = action === 'add' ? 'Added' : 'Removed';
     const successMessage = `${actionVerb} ${points} points for ${studentName}!`;

@@ -58,7 +58,13 @@
         #goto-cup { display: none; background-color: var(--gold); color: #333; }
         #goto-cup:hover { background-color: #e6c300; }
 
-        /* Scanner & Points Page Styles */
+        /* Points Page Styles */
+        .searchable-dropdown { position: relative; }
+        .searchable-dropdown-options { display: none; position: absolute; background-color: white; width: 100%; border: 1px solid #ddd; border-top: none; border-radius: 0 0 8px 8px; max-height: 200px; overflow-y: auto; z-index: 1000; }
+        .searchable-dropdown-options div { padding: 12px; cursor: pointer; }
+        .searchable-dropdown-options div:hover { background-color: #f1f1f1; }
+        
+        /* Other Page Styles */
         .reader-container { background-color: var(--card-bg); border-radius: var(--border-radius); box-shadow: var(--shadow); overflow: hidden; border: 1px solid #eee; }
         .result-box { font-size: 1.2em; font-weight: 500; padding: 20px; border-radius: var(--border-radius); transition: all 0.3s ease-in-out; min-height: 30px; line-height: 1.5; margin-bottom: 25px; }
         .info { background-color: #f0f2f5; color: var(--text-color); }
@@ -70,8 +76,6 @@
         .button.remove { background-color: #dc3545; }
         .button.remove:hover { background-color: #c82333; }
         #ra-balance { font-weight: 600; color: var(--primary-color); margin-bottom: 20px; }
-
-        /* Leaderboard, Transcript, Quotes Styles */
         .ranking-type-selector { display: flex; justify-content: center; gap: 15px; margin-bottom: 25px; flex-wrap: wrap; }
         #leaderboard-display, #transcript-display, #quotes-view-display { margin-top: 20px; text-align: left; }
         .leaderboard-item, .transcript-item, .quote-item { padding: 12px; margin-bottom: 8px; background-color: #f9fafb; border-radius: 8px; border: 1px solid #eee; font-size: 0.95em; }
@@ -112,14 +116,11 @@
             <h2>RA Points</h2>
             <p id="ra-balance">Your Balance: Loading...</p>
             <div class="form-group">
-                <label for="target-search">Search Target</label>
-                <input type="text" id="target-search" placeholder="Type to filter...">
-            </div>
-            <div class="form-group">
-                <label for="target-select">Select Target</label>
-                <select id="target-select" name="target-select">
-                    <option>Loading...</option>
-                </select>
+                <label id="target-label" for="target-search-input">Select Target</label>
+                <div class="searchable-dropdown">
+                    <input type="text" id="target-search-input" placeholder="Type to search..." autocomplete="off">
+                    <div class="searchable-dropdown-options" id="target-options"></div>
+                </div>
             </div>
             <div class="form-group"><label for="points-input">Points</label><input type="number" id="points-input" placeholder="e.g., 5" required></div>
             <div class="form-group"><label for="reason-input">Reason</label><input type="text" id="reason-input" placeholder="e.g., Cleaning up" required></div>
@@ -140,13 +141,14 @@
         const pages = document.querySelectorAll('.page');
         const loginForm = document.getElementById('login-form');
         const welcomeMessage = document.getElementById('welcome-message');
-        const targetSearchInput = document.getElementById('target-search');
-        const targetSelect = document.getElementById('target-select');
+        const targetSearchInput = document.getElementById('target-search-input');
+        const targetOptionsContainer = document.getElementById('target-options');
         const raBalanceEl = document.getElementById('ra-balance');
         const cupButton = document.getElementById('goto-cup');
         const usernameSelect = document.getElementById('username');
 
         let allUsers = [];
+        let allTargets = [];
         let loggedInUser = null;
 
         // --- CORE FUNCTIONS ---
@@ -212,37 +214,54 @@
         async function populateTargets() {
             const isCoordinator = ['Saud', 'Aban', 'Sultan'].includes(loggedInUser.username);
             const endpoint = isCoordinator ? '/.netlify/functions/get-ras' : '/.netlify/functions/get-students';
-            const label = document.querySelector('#points-page label[for="target-select"]');
+            const label = document.getElementById('target-label');
             label.textContent = isCoordinator ? 'Select RA' : 'Select Student';
 
             try {
-                targetSelect.innerHTML = '<option>Loading...</option>';
+                targetOptionsContainer.innerHTML = '<div class="loader"></div>';
                 targetSearchInput.value = '';
                 const response = await fetch(endpoint);
                 if (!response.ok) throw new Error('Failed to load list');
-                const targets = await response.json();
-                targetSelect.innerHTML = '';
-                targets.forEach(target => {
-                    const option = document.createElement('option');
-                    option.value = target;
-                    option.textContent = target;
-                    targetSelect.appendChild(option);
-                });
+                allTargets = await response.json();
+                renderTargetOptions(allTargets);
             } catch (error) {
-                targetSelect.innerHTML = '<option>Could not load list</option>';
+                targetOptionsContainer.innerHTML = '<div>Could not load list</div>';
             }
+        }
+
+        function renderTargetOptions(targets) {
+            targetOptionsContainer.innerHTML = '';
+            if (targets.length === 0) {
+                targetOptionsContainer.style.display = 'none';
+                return;
+            }
+            targets.forEach(target => {
+                const optionDiv = document.createElement('div');
+                optionDiv.textContent = target;
+                optionDiv.addEventListener('click', () => {
+                    targetSearchInput.value = target;
+                    targetOptionsContainer.style.display = 'none';
+                });
+                targetOptionsContainer.appendChild(optionDiv);
+            });
         }
 
         targetSearchInput.addEventListener('input', function() {
             const filter = this.value.toUpperCase();
-            const options = targetSelect.options;
-            for (let i = 0; i < options.length; i++) {
-                const txtValue = options[i].textContent || options[i].innerText;
-                if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                    options[i].style.display = "";
-                } else {
-                    options[i].style.display = "none";
-                }
+            const filteredTargets = allTargets.filter(t => t.toUpperCase().includes(filter));
+            renderTargetOptions(filteredTargets);
+            targetOptionsContainer.style.display = 'block';
+        });
+        
+        targetSearchInput.addEventListener('focus', () => {
+            renderTargetOptions(allTargets);
+            targetOptionsContainer.style.display = 'block';
+        });
+
+        // Hide dropdown when clicking outside
+        document.addEventListener('click', function(event) {
+            if (!targetSearchInput.contains(event.target)) {
+                targetOptionsContainer.style.display = 'none';
             }
         });
         
@@ -269,7 +288,7 @@
         rankingTypeRadios.forEach(radio => radio.addEventListener('change', fetchRankings));
         function renderLeaderboard(data, type) { leaderboardDisplay.innerHTML = ''; if (data.length === 0) { leaderboardDisplay.innerHTML = '<p>No points data found.</p>'; return; } data.forEach((item, index) => { const rank = index + 1; const leaderboardItem = document.createElement('div'); leaderboardItem.className = `leaderboard-item rank-${rank}`; leaderboardItem.innerHTML = `<div class="rank">#${rank}</div><div class="name">${item.name}</div><div class="points">${item.points} pts</div>`; leaderboardDisplay.appendChild(leaderboardItem); }); }
         async function fetchRaBalance() { raBalanceEl.textContent = 'Your Balance: Loading...'; if (!loggedInUser) { raBalanceEl.textContent = 'Your Balance: Error - Not logged in.'; return; } try { const response = await fetch('/.netlify/functions/get-ra-balance', { method: 'POST', body: JSON.stringify({ raName: loggedInUser.username }) }); if (!response.ok) { const errorText = await response.text(); throw new Error(`Failed to fetch balance. Server responded with: ${response.status} ${errorText}`); } const data = await response.json(); if (typeof data.balance !== 'undefined') { raBalanceEl.textContent = `Your Balance: ${data.balance} Points`; } else { throw new Error('Balance not found in server response.'); } } catch (error) { console.error("fetchRaBalance Error:", error); raBalanceEl.textContent = 'Your Balance: Could not load.'; } }
-        async function handlePoints(action) { const targetName = targetSelect.value; const points = document.getElementById('points-input').value; const reason = document.getElementById('reason-input').value; const resultEl = document.getElementById('points-result'); if (!points || parseInt(points) <= 0) { resultEl.className = 'status-message error'; resultEl.textContent = 'Please enter a valid number of points.'; return; } if (!reason.trim()) { resultEl.className = 'status-message error'; resultEl.textContent = 'A reason is required.'; return; } resultEl.className = 'status-message info'; resultEl.textContent = `${action === 'add' ? 'Adding' : 'Removing'} points...`; try { const response = await fetch('/.netlify/functions/manage-points', { method: 'POST', body: JSON.stringify({ studentName: targetName, points: parseInt(points), action, reason, raName: loggedInUser.username }) }); const data = await response.json(); resultEl.textContent = data.message; resultEl.className = `status-message ${data.status}`; if (data.status === 'success') { fetchRaBalance(); } } catch (error) { resultEl.textContent = 'Error communicating with server.'; resultEl.className = 'status-message error'; } }
+        async function handlePoints(action) { const targetName = targetSearchInput.value; const points = document.getElementById('points-input').value; const reason = document.getElementById('reason-input').value; const resultEl = document.getElementById('points-result'); if (!points || parseInt(points) <= 0) { resultEl.className = 'status-message error'; resultEl.textContent = 'Please enter a valid number of points.'; return; } if (!reason.trim()) { resultEl.className = 'status-message error'; resultEl.textContent = 'A reason is required.'; return; } resultEl.className = 'status-message info'; resultEl.textContent = `${action === 'add' ? 'Adding' : 'Removing'} points...`; try { const response = await fetch('/.netlify/functions/manage-points', { method: 'POST', body: JSON.stringify({ studentName: targetName, points: parseInt(points), action, reason, raName: loggedInUser.username }) }); const data = await response.json(); resultEl.textContent = data.message; resultEl.className = `status-message ${data.status}`; if (data.status === 'success') { fetchRaBalance(); } } catch (error) { resultEl.textContent = 'Error communicating with server.'; resultEl.className = 'status-message error'; } }
         document.getElementById('add-points').addEventListener('click', () => handlePoints('add'));
         document.getElementById('remove-points').addEventListener('click', () => handlePoints('remove'));
     </script>

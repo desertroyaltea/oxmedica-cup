@@ -76,10 +76,14 @@ exports.handler = async function (event) {
         await sheets.spreadsheets.values.update({ spreadsheetId, range: `${raSheetName}!${raCellToUpdate}`, valueInputOption: 'USER_ENTERED', resource: { values: [[currentRaBalance]] } });
         return { statusCode: 200, body: JSON.stringify({ status: 'error', message: `Target '${studentName}' not found in ${currentWeekSheet}.` }) };
     }
-    
-    // --- REMOVED: The check that prevented RAs from giving points to their own students has been removed. ---
 
-    const studentRaGroupForLog = `RA ${(rows[targetRowIndex][2] || '').trim()}'s Group`;
+    const studentRaGroupName = (rows[targetRowIndex][2] || '').trim();
+    if (!isGiverCoordinator && studentRaGroupName === raName) {
+        await sheets.spreadsheets.values.update({ spreadsheetId, range: `${raSheetName}!${raCellToUpdate}`, valueInputOption: 'USER_ENTERED', resource: { values: [[currentRaBalance]] } });
+        return { statusCode: 200, body: JSON.stringify({ status: 'error', message: "You cannot award points to students in your own group." }) };
+    }
+
+    const studentRaGroupForLog = `RA ${studentRaGroupName}'s Group`;
     const currentStudentPoints = parseInt(rows[targetRowIndex][targetColumnIndex] || '0');
     let pointsChange = action === 'add' ? points : -points;
     const newStudentPoints = currentStudentPoints + pointsChange;
@@ -87,22 +91,25 @@ exports.handler = async function (event) {
     const studentCellToUpdate = toA1(targetColumnIndex) + (targetRowIndex + 1);
     await sheets.spreadsheets.values.update({ spreadsheetId, range: `${currentWeekSheet}!${studentCellToUpdate}`, valueInputOption: 'USER_ENTERED', resource: { values: [[newStudentPoints]] } });
 
-    if (!isGiverCoordinator && !isReceiverRA) {
-        const pointsLogSheetName = 'Points';
-        const dateForLog = saudiTime.toLocaleDateString('en-US', { timeZone: 'Asia/Riyadh' });
-        let recorderDisplayName = `RA ${raName}`;
-        
-        const pointsLogData = [
-            dateForLog, 
-            studentName, 
-            recorderDisplayName,
-            pointsChange > 0 ? `+${pointsChange}` : pointsChange.toString(), 
-            reason, 
-            studentRaGroupForLog
-        ];
-        
-        await sheets.spreadsheets.values.append({ spreadsheetId, range: pointsLogSheetName, valueInputOption: 'USER_ENTERED', resource: { values: [pointsLogData] } });
+    // --- 3. Log the transaction in the Points Sheet ---
+    // --- FIX: The conditional check has been removed to log ALL transactions ---
+    const pointsLogSheetName = 'Points';
+    const dateForLog = saudiTime.toLocaleDateString('en-US', { timeZone: 'Asia/Riyadh' });
+    let recorderDisplayName = `RA ${raName}`;
+    if (isGiverCoordinator) {
+        recorderDisplayName = `Coordinator ${raName}`;
     }
+    
+    const pointsLogData = [
+        dateForLog, 
+        studentName, 
+        recorderDisplayName,
+        pointsChange > 0 ? `+${pointsChange}` : pointsChange.toString(), 
+        reason, 
+        studentRaGroupForLog
+    ];
+    
+    await sheets.spreadsheets.values.append({ spreadsheetId, range: pointsLogSheetName, valueInputOption: 'USER_ENTERED', resource: { values: [pointsLogData] } });
     
     const actionVerb = action === 'add' ? 'Added' : 'Removed';
     const successMessage = `${actionVerb} ${points} points for ${studentName}!`;

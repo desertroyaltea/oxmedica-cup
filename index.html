@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OXMEDICA Cup</title>
+    <title>The EXCOR System</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -65,7 +65,6 @@
         .searchable-dropdown-options div:hover { background-color: #f1f1f1; }
         
         /* Other Page Styles */
-        .reader-container { background-color: var(--card-bg); border-radius: var(--border-radius); box-shadow: var(--shadow); overflow: hidden; border: 1px solid #eee; }
         .result-box { font-size: 1.2em; font-weight: 500; padding: 20px; border-radius: var(--border-radius); transition: all 0.3s ease-in-out; min-height: 30px; line-height: 1.5; margin-bottom: 25px; }
         .info { background-color: #f0f2f5; color: var(--text-color); }
         .success { background-color: var(--success-bg); color: var(--success-text); }
@@ -86,6 +85,7 @@
         .leaderboard-item.rank-1 .rank { color: var(--gold); }
         .leaderboard-item.rank-2 .rank { color: var(--silver); }
         .leaderboard-item.rank-3 .rank { color: var(--bronze); }
+        .leaderboard-separator { text-align: center; color: var(--subtle-text); font-weight: 600; padding: 10px 0; }
         .transcript-item { line-height: 1.6; }
         .t-ra, .q-author { color: var(--primary-color); font-weight: 600; }
         .t-group { color: #dd6b20; font-weight: 600; }
@@ -98,19 +98,16 @@
     </style>
 </head>
 <body>
-    <!-- Login Page -->
     <div id="login-page" class="page active container">
         <div class="card"><div class="form-header"><img src="assets/logo.png" alt="OXMEDICA Logo" class="logo"><h1>OXMEDICA Cup 2025</h1></div><form id="login-form"><div class="form-group"><label for="username">Username</label><select id="username" name="username"><option>Loading users...</option></select></div><div class="form-group"><label for="password">Password</label><input type="password" id="password" name="password" required></div><button type="submit" class="button">Login</button><p id="login-error" class="status-message"></p></form></div>
         <footer><p class="credit">OXMEDICA 2025</p></footer>
     </div>
 
-    <!-- Menu Page -->
     <div id="menu-page" class="page container">
-        <div class="card"><div class="page-header"><img src="assets/logo.png" alt="OXMEDICA Logo" class="logo"></div><p id="welcome-message"></p><div class="menu-buttons"><button id="goto-points" class="button">RA Points</button><button id="goto-quotes" class="button">Quotes</button><button id="goto-transcript" class="button">Transcript</button><button id="goto-cup" class="button">OXMEDICA Cup</button></div></div>
+        <div class="card"><div class="page-header"><img src="assets/logo.png" alt="OXMEDICA Logo" class="logo"></div><p id="welcome-message"></p><div class="menu-buttons"><button id="goto-points" class="button">RA Points</button><button id="goto-quotes" class="button">Quotes</button><button id="goto-cup" class="button">OXMEDICA Cup</button></div></div>
          <footer><p class="credit">OXMEDICA 2025</p></footer>
     </div>
 
-    <!-- Points Page -->
     <div id="points-page" class="page container">
         <div class="card">
             <h2>RA Points</h2>
@@ -123,7 +120,7 @@
                 </div>
             </div>
             <div class="form-group"><label for="points-input">Points</label><input type="number" id="points-input" placeholder="e.g., 5" required></div>
-            <div class="form-group"><label for="reason-input">Reason</label><input type="text" id="reason-input" placeholder="e.g., Cleaning up" required></div>
+            <div class="form-group"><label for="reason-input">Reason</label><input type="text" id="reason-input" placeholder="e.g., Won competition" required></div>
             <div class="button-group"><button id="add-points" class="button add">Add +</button><button id="remove-points" class="button remove">Remove -</button></div>
             <p id="points-result" class="status-message"></p>
         </div>
@@ -131,10 +128,9 @@
         <footer><p class="credit">OXMEDICA 2025</p></footer>
     </div>
     
-    <!-- Other pages remain the same -->
     <div id="quotes-page" class="page container"> <div class="card"> <h2>Add a Quote</h2> <form id="add-quote-form"> <div class="form-group"><label for="quote-input">The Quote</label><input type="text" id="quote-input" required></div> <div class="form-group"><label for="author-input">Who said it?</label><input type="text" id="author-input" required></div> <button type="submit" class="button">Add Quote</button> <p id="quote-result" class="status-message"></p> </form> <hr> <h2>View Quotes</h2> <div class="form-group"><label for="quotes-date">Select Date</label><input type="date" id="quotes-date"></div> <div id="quotes-view-display"></div> </div> <button class="button back-button">Back to Menu</button> <footer><p class="credit">OXMEDICA 2025</p></footer> </div>
+    
     <div id="cup-page" class="page container"> <div class="card"><h2>OXMEDICA Cup Rankings</h2><div class="ranking-type-selector"><label><input type="radio" name="rankingType" value="student" checked> Student</label><label><input type="radio" name="rankingType" value="group"> RA Group</label><label><input type="radio" name="rankingType" value="ra"> RAs</label></div><div id="leaderboard-display"><p>Select a ranking type to view results.</p></div></div> <button class="button back-button">Back to Menu</button><footer><p class="credit">OXMEDICA 2025</p></footer> </div>
-    <div id="transcript-page" class="page container"> <div class="card"><h2>Daily Points Transcript</h2><div class="form-group"><label for="transcript-date">Select Date</label><input type="date" id="transcript-date"></div><div id="transcript-display"></div></div> <button class="button back-button">Back to Menu</button><footer><p class="credit">OXMEDICA 2025</p></footer> </div>
 
     <script>
         // --- GLOBAL VARIABLES ---
@@ -258,7 +254,6 @@
             targetOptionsContainer.style.display = 'block';
         });
 
-        // Hide dropdown when clicking outside
         document.addEventListener('click', function(event) {
             if (!targetSearchInput.contains(event.target)) {
                 targetOptionsContainer.style.display = 'none';
@@ -267,7 +262,6 @@
         
         // --- All other functions ---
         document.getElementById('goto-cup').addEventListener('click', () => { showPage('cup-page'); fetchRankings(); });
-        document.getElementById('goto-transcript').addEventListener('click', () => { const dateInput = document.getElementById('transcript-date'); if (!dateInput.value) { dateInput.value = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Riyadh' })).toISOString().split('T')[0]; } fetchTranscript(); showPage('transcript-page'); });
         document.getElementById('goto-quotes').addEventListener('click', () => { const dateInput = document.getElementById('quotes-date'); if (!dateInput.value) { dateInput.value = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Riyadh' })).toISOString().split('T')[0]; } fetchQuotes(); showPage('quotes-page'); });
         const addQuoteForm = document.getElementById('add-quote-form');
         const quoteResultEl = document.getElementById('quote-result');
@@ -277,16 +271,45 @@
         async function fetchQuotes() { const selectedDate = quotesDateInput.value; if (!selectedDate) { quotesViewDisplay.innerHTML = ''; return; } quotesViewDisplay.innerHTML = '<div class="loader"></div>'; try { const response = await fetch('/.netlify/functions/get-quotes', { method: 'POST', body: JSON.stringify({ date: selectedDate }) }); if (!response.ok) throw new Error('Failed to fetch quotes'); const data = await response.json(); renderQuotes(data); } catch (error) { quotesViewDisplay.innerHTML = '<p class="error">Could not load quotes.</p>'; } }
         quotesDateInput.addEventListener('change', fetchQuotes);
         function renderQuotes(data) { quotesViewDisplay.innerHTML = ''; if (data.length === 0) { quotesViewDisplay.innerHTML = '<p>No quotes found for this date.</p>'; return; } data.forEach(entry => { const item = document.createElement('div'); item.className = 'quote-item'; item.innerHTML = `<span class="q-author">${entry.author}:</span> <span class="q-quote">"${entry.quote}"</span>`; quotesViewDisplay.appendChild(item); }); }
-        const transcriptDateInput = document.getElementById('transcript-date');
-        const transcriptDisplay = document.getElementById('transcript-display');
-        async function fetchTranscript() { const selectedDate = transcriptDateInput.value; if (!selectedDate) { transcriptDisplay.innerHTML = ''; return; } transcriptDisplay.innerHTML = '<div class="loader"></div>'; try { const response = await fetch('/.netlify/functions/get-transcript', { method: 'POST', body: JSON.stringify({ date: selectedDate }) }); if (!response.ok) throw new Error('Failed to fetch transcript'); const data = await response.json(); renderTranscript(data); } catch (error) { transcriptDisplay.innerHTML = '<p class="error">Could not load transcript.</p>'; } }
-        transcriptDateInput.addEventListener('change', fetchTranscript);
-        function renderTranscript(data) { transcriptDisplay.innerHTML = ''; if (data.length === 0) { transcriptDisplay.innerHTML = '<p>No points transactions found for this date.</p>'; return; } data.forEach(entry => { const item = document.createElement('div'); item.className = 'transcript-item'; item.innerHTML = ` <span class="t-ra">RA ${entry.raName}</span> gave <span class="t-group">${entry.studentRaGroup}</span> <b class="t-points">${entry.points} points</b> for: <span class="t-reason">"${entry.reason}"</span> `; transcriptDisplay.appendChild(item); }); }
         const leaderboardDisplay = document.getElementById('leaderboard-display');
         const rankingTypeRadios = document.querySelectorAll('input[name="rankingType"]');
         async function fetchRankings() { const selectedType = document.querySelector('input[name="rankingType"]:checked').value; leaderboardDisplay.innerHTML = '<div class="loader"></div>'; try { const response = await fetch('/.netlify/functions/get-cup-ranking', { method: 'POST', body: JSON.stringify({ week: 'Total', type: selectedType }) }); if (!response.ok) throw new Error('Failed to fetch rankings'); const data = await response.json(); renderLeaderboard(data, selectedType); } catch (error) { leaderboardDisplay.innerHTML = '<p class="error">Could not load rankings.</p>'; } }
         rankingTypeRadios.forEach(radio => radio.addEventListener('change', fetchRankings));
-        function renderLeaderboard(data, type) { leaderboardDisplay.innerHTML = ''; if (data.length === 0) { leaderboardDisplay.innerHTML = '<p>No points data found.</p>'; return; } data.forEach((item, index) => { const rank = index + 1; const leaderboardItem = document.createElement('div'); leaderboardItem.className = `leaderboard-item rank-${rank}`; leaderboardItem.innerHTML = `<div class="rank">#${rank}</div><div class="name">${item.name}</div><div class="points">${item.points} pts</div>`; leaderboardDisplay.appendChild(leaderboardItem); }); }
+        function renderLeaderboard(data, type) {
+            leaderboardDisplay.innerHTML = '';
+            if (data.length === 0) {
+                leaderboardDisplay.innerHTML = '<p>No points data found.</p>';
+                return;
+            }
+            
+            function createLeaderboardItem(item, rank) {
+                const leaderboardItem = document.createElement('div');
+                leaderboardItem.className = `leaderboard-item rank-${rank}`;
+                leaderboardItem.innerHTML = `<div class="rank">#${rank}</div><div class="name">${item.name}</div><div class="points">${item.points} pts</div>`;
+                return leaderboardItem;
+            }
+
+            if (type === 'student' && data.length > 15) {
+                // Top 10
+                for (let i = 0; i < 10; i++) {
+                    leaderboardDisplay.appendChild(createLeaderboardItem(data[i], i + 1));
+                }
+                // Separator
+                const separator = document.createElement('div');
+                separator.className = 'leaderboard-separator';
+                separator.textContent = '...';
+                leaderboardDisplay.appendChild(separator);
+                // Bottom 5
+                for (let i = data.length - 5; i < data.length; i++) {
+                    leaderboardDisplay.appendChild(createLeaderboardItem(data[i], i + 1));
+                }
+            } else {
+                // Render full list for groups, RAs, or short student lists
+                data.forEach((item, index) => {
+                    leaderboardDisplay.appendChild(createLeaderboardItem(item, index + 1));
+                });
+            }
+        }
         async function fetchRaBalance() { raBalanceEl.textContent = 'Your Balance: Loading...'; if (!loggedInUser) { raBalanceEl.textContent = 'Your Balance: Error - Not logged in.'; return; } try { const response = await fetch('/.netlify/functions/get-ra-balance', { method: 'POST', body: JSON.stringify({ raName: loggedInUser.username }) }); if (!response.ok) { const errorText = await response.text(); throw new Error(`Failed to fetch balance. Server responded with: ${response.status} ${errorText}`); } const data = await response.json(); if (typeof data.balance !== 'undefined') { raBalanceEl.textContent = `Your Balance: ${data.balance} Points`; } else { throw new Error('Balance not found in server response.'); } } catch (error) { console.error("fetchRaBalance Error:", error); raBalanceEl.textContent = 'Your Balance: Could not load.'; } }
         async function handlePoints(action) { const targetName = targetSearchInput.value; const points = document.getElementById('points-input').value; const reason = document.getElementById('reason-input').value; const resultEl = document.getElementById('points-result'); if (!points || parseInt(points) <= 0) { resultEl.className = 'status-message error'; resultEl.textContent = 'Please enter a valid number of points.'; return; } if (!reason.trim()) { resultEl.className = 'status-message error'; resultEl.textContent = 'A reason is required.'; return; } resultEl.className = 'status-message info'; resultEl.textContent = `${action === 'add' ? 'Adding' : 'Removing'} points...`; try { const response = await fetch('/.netlify/functions/manage-points', { method: 'POST', body: JSON.stringify({ studentName: targetName, points: parseInt(points), action, reason, raName: loggedInUser.username }) }); const data = await response.json(); resultEl.textContent = data.message; resultEl.className = `status-message ${data.status}`; if (data.status === 'success') { fetchRaBalance(); } } catch (error) { resultEl.textContent = 'Error communicating with server.'; resultEl.className = 'status-message error'; } }
         document.getElementById('add-points').addEventListener('click', () => handlePoints('add'));

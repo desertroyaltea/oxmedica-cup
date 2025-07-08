@@ -76,19 +76,10 @@ exports.handler = async function (event) {
         await sheets.spreadsheets.values.update({ spreadsheetId, range: `${raSheetName}!${raCellToUpdate}`, valueInputOption: 'USER_ENTERED', resource: { values: [[currentRaBalance]] } });
         return { statusCode: 200, body: JSON.stringify({ status: 'error', message: `Target '${studentName}' not found in ${currentWeekSheet}.` }) };
     }
-
-    const studentRaGroupName = (rows[targetRowIndex][2] || '').trim();
     
-    // --- NEW: Updated permissions logic ---
-    // An RA cannot ADD points to their own students, but they CAN remove them.
-    if (!isGiverCoordinator && studentRaGroupName === raName && action === 'add') {
-        // Refund points because this action is invalid.
-        await sheets.spreadsheets.values.update({ spreadsheetId, range: `${raSheetName}!${raCellToUpdate}`, valueInputOption: 'USER_ENTERED', resource: { values: [[currentRaBalance]] } });
-        return { statusCode: 200, body: JSON.stringify({ status: 'error', message: "You cannot ADD points to students in your own group." }) };
-    }
-    // --- End of new check ---
+    // --- REMOVED: The check that prevented RAs from giving points to their own students has been removed. ---
 
-    const studentRaGroupForLog = `RA ${studentRaGroupName}'s Group`;
+    const studentRaGroupForLog = `RA ${(rows[targetRowIndex][2] || '').trim()}'s Group`;
     const currentStudentPoints = parseInt(rows[targetRowIndex][targetColumnIndex] || '0');
     let pointsChange = action === 'add' ? points : -points;
     const newStudentPoints = currentStudentPoints + pointsChange;
